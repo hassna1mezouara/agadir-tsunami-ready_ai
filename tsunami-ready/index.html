@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agadir Tsunami-Ready — Système d'Évacuation Côtière</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="src/styles/main.css" />
+</head>
+<body>
+
+  <!-- ALERTE TSUNAMI (bandeau) -->
+  <div id="tsunami-banner" class="hidden">
+    <span class="banner-icon">⚠</span>
+    <span id="banner-text">ALERTE TSUNAMI — ÉVACUEZ IMMÉDIATEMENT VERS LES ZONES EN HAUTEUR</span>
+    <span class="banner-mag" id="banner-mag"></span>
+  </div>
+
+  <div id="app">
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+      <div class="logo">
+        <div class="logo-wave">〜</div>
+        <div>
+          <div class="logo-title">TSUNAMI<strong>READY</strong></div>
+          <div class="logo-sub">Agadir · Côte Atlantique</div>
+        </div>
+      </div>
+
+      <nav>
+        <button class="nav-btn active" data-view="dashboard" onclick="showView('dashboard')">
+          <span>◈</span> Dashboard
+        </button>
+        <button class="nav-btn" data-view="map" onclick="showView('map')">
+          <span>◉</span> Carte Évacuation
+        </button>
+        <button class="nav-btn" data-view="sirens" onclick="showView('sirens')">
+          <span>◎</span> Sirènes & Alertes
+        </button>
+        <button class="nav-btn" data-view="assembly" onclick="showView('assembly')">
+          <span>▲</span> Points de Hauteur
+        </button>
+      </nav>
+
+      <!-- Statut système -->
+      <div class="sys-status">
+        <div class="status-row">
+          <span class="dot" id="dot-api"></span>
+          <span>API Sismique</span>
+        </div>
+        <div class="status-row">
+          <span class="dot" id="dot-ws"></span>
+          <span>GPS Citoyens</span>
+        </div>
+        <div class="status-row">
+          <span class="dot" id="dot-sirens"></span>
+          <span>Réseau Sirènes</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main id="main">
+
+      <!-- ====== DASHBOARD ====== -->
+      <section id="view-dashboard" class="view active">
+        <div class="view-header">
+          <h1>Tableau de bord <span class="live-pill">LIVE</span></h1>
+          <span id="last-update" class="ts">—</span>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi kpi-ocean">
+            <div class="kpi-icon">🌊</div>
+            <div class="kpi-label">Dernière secousse marine</div>
+            <div class="kpi-value" id="kpi-mag">—</div>
+            <div class="kpi-sub" id="kpi-loc">—</div>
+          </div>
+          <div class="kpi kpi-siren">
+            <div class="kpi-icon">📢</div>
+            <div class="kpi-label">Sirènes actives</div>
+            <div class="kpi-value" id="kpi-sirens">0</div>
+            <div class="kpi-sub">Seuil ≥ 6.5</div>
+          </div>
+          <div class="kpi kpi-people">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-label">Citoyens en évacuation</div>
+            <div class="kpi-value" id="kpi-evac">0</div>
+            <div class="kpi-sub">Positions GPS actives</div>
+          </div>
+          <div class="kpi kpi-route">
+            <div class="kpi-icon">🛤</div>
+            <div class="kpi-label">Routes calculées</div>
+            <div class="kpi-value" id="kpi-routes">0</div>
+            <div class="kpi-sub">Vers points en hauteur</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-row">
+          <div class="chart-card">
+            <div class="chart-label">Flux de population — évacuation (mises à jour / 5s)</div>
+            <canvas id="chart-flux" height="160"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-label">Historique secousses marines</div>
+            <canvas id="chart-seismes" height="160"></canvas>
+          </div>
+        </div>
+
+        <!-- Points rassemblement résumé -->
+        <div class="section-card">
+          <div class="section-label">Points de rassemblement en hauteur — capacité</div>
+          <div id="assembly-summary" class="assembly-bar-list"></div>
+        </div>
+      </section>
+
+      <!-- ====== CARTE ====== -->
+      <section id="view-map" class="view">
+        <div class="view-header">
+          <h1>Carte d'évacuation <span class="live-pill">LIVE</span></h1>
+          <div class="map-ctrl-bar">
+            <button class="ctrl-btn active" id="btn-citoyens" onclick="MapComp.toggleLayer('citizens')">● Citoyens</button>
+            <button class="ctrl-btn active" id="btn-routes" onclick="MapComp.toggleLayer('routes')">● Routes</button>
+            <button class="ctrl-btn active" id="btn-assembly" onclick="MapComp.toggleLayer('assembly')">▲ Hauteurs</button>
+            <button class="ctrl-btn active" id="btn-zones" onclick="MapComp.toggleLayer('danger')">⚠ Zones risque</button>
+          </div>
+        </div>
+        <div class="map-wrap">
+          <div id="map"></div>
+          <div class="map-legend">
+            <div class="leg-title">Légende</div>
+            <div class="leg-row"><span class="leg-dot" style="background:#00e676"></span>Route rapide</div>
+            <div class="leg-row"><span class="leg-dot" style="background:#ffab00"></span>Route risquée</div>
+            <div class="leg-row"><span class="leg-dot" style="background:#ff1744"></span>Zone inondable</div>
+            <div class="leg-row"><span class="leg-dot" style="background:#00b0ff"></span>Citoyen GPS</div>
+            <div class="leg-row"><span class="leg-dot" style="background:#aa00ff"></span>Point de hauteur</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== SIRÈNES ====== -->
+      <section id="view-sirens" class="view">
+        <div class="view-header">
+          <h1>Réseau de sirènes</h1>
+          <div>
+            <button class="action-btn danger" onclick="SirenComp.testAll()">TEST TOUTES LES SIRÈNES</button>
+            <button class="action-btn reset" onclick="SirenComp.resetAll()">Réinitialiser</button>
+          </div>
+        </div>
+        <div id="siren-grid" class="siren-grid"></div>
+      </section>
+
+      <!-- ====== POINTS EN HAUTEUR ====== -->
+      <section id="view-assembly" class="view">
+        <div class="view-header">
+          <h1>Points de rassemblement en hauteur</h1>
+        </div>
+        <div id="assembly-cards" class="assembly-grid"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="src/utils/evacuation.js"></script>
+  <script src="src/services/api.js"></script>
+  <script src="src/services/websocket.js"></script>
+  <script src="src/store/state.js"></script>
+  <script src="src/components/map.js"></script>
+  <script src="src/components/charts.js"></script>
+  <script src="src/components/sirens.js"></script>
+  <script src="src/components/assembly.js"></script>
+  <script src="src/components/dashboard.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
